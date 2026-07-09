@@ -5,7 +5,7 @@
   --text-dim: #8b949e;
   --accent: #58a6ff;
   --border: #21262d;
-  --max-width: 1000px;
+  --max-width: 900px;
 }
 
 * { box-sizing: border-box; }

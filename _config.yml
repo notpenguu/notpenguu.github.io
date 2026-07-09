@@ -1,0 +1,14 @@
+title: My Blog
+description: Thoughts, notes, and writing.
+author: ahoy
+
+# Set to your GitHub Pages URL. For a user site (username.github.io) leave baseurl blank.
+# For a project site (username.github.io/repo-name) set baseurl: "/repo-name"
+baseurl: ""
+url: "notpenguu.github.io"
+
+# Build settings
+markdown: kramdown
+permalink: /posts/:title/
+
+# Show newest posts first on the home page (handled in index.html)

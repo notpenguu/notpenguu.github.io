@@ -24,12 +24,12 @@ What will this article cover:
 A `stack` is a linear structure for data. Like a physical stack of plates, the `stack` follows a Last in, First Out (LIFO) principle: You can only place a new plate on the very top, and when you need to take a plate, you must remove the one from the top first.
 
 ```
-                    |                                                      | <-- New plate
-   Top of stack --> |======================================================| <-- Plate to be removed
-                    |======================================================|
-                ^   |======================================================|
-                |   |======================================================|
-  grows upwards |   |======================================================|             
+                    |                    | <-- New plate
+   Top of stack --> |====================| <-- Plate to be removed
+                    |====================|
+                ^   |====================|
+                |   |====================|
+  grows upwards |   |====================|             
 ```
 
 On `remove()` operations the topmost plate will be removed, and on `add()` operations a plate will be pushed on top of the current topmost plate. In the context of a stack, these operations are usually called `pop` for removal and `push` for addition.
@@ -39,23 +39,23 @@ For our purposes, we're interested in a specific stack called the `call stack`. 
 In order to understand memory corruption we'll need to understand the layout of the memory in the process we plan to corrupt. 
 
 ```
-                                [  STACK ] <== Stack grows downward
-                                [        ]
-                                [  HEAP  ] <== Heap grows upward
-                                [  BSS   ] <== Uninitialized Data
-                                [  DATA  ] <== Initialized Variables
-                                [  TEXT  ] <== Binary Image
+    [  STACK ] <== Stack grows downward
+    [        ]
+    [  HEAP  ] <== Heap grows upward
+    [  BSS   ] <== Uninitialized Data
+    [  DATA  ] <== Initialized Variables
+    [  TEXT  ] <== Binary Image
 ```
 
 The key takeaway is that in this case the `stack` grows downwards in the `call stack` meaning that when reasoning about the `call stack` we must use a flipped model relative to a regular stack.
 
 ```
-grows downwards |   |======================================================| 
-                |   |======================================================| 
-                V   |======================================================|
-                    |======================================================|
-   Top of stack --> |======================================================| <-- Plate to be removed
-                    |                                                      | <-- New plate            
+grows downwards |   |====================| 
+                |   |====================| 
+                V   |====================|
+                    |====================|
+   Top of stack --> |====================| <-- Plate to be removed
+                    |                    | <-- New plate            
 ```
 
 ## **Hijacking control flow**
@@ -67,17 +67,17 @@ In order to hijack control flow we'll need to understand two things: **A)** How 
 When a function is called, the operating system creates a stack frame containing the function arguments, local variables for the function to use and crucially an address in memory for the function to return to after completion called the `return address`. Normally, the `return address` specifies the memory address directly after the call to the child function from the parent function but by corrupting this value, the attacker can hijack control flow.
 
 ```
-                                PARENT          ┏━━>    CHILD
-                                CALL CHILD    ━━┛       DO SOMETHING
-                                NOP       <===========  RETURN
+    PARENT          ┏━━>    CHILD
+    CALL CHILD    ━━┛       DO SOMETHING
+    NOP       <===========  RETURN
 ```
 
 A  function call looks something like this. The parent function calls the child function which does something and then follows the `return address` back to the parent function.
 
 ```
-                                PARENT          ┏━━>    CHILD
-                                CALL CHILD    ━━┛       DO SOMETHING
-                                NOP                     RETURN        =========>  Corrupted Address
+    PARENT          ┏━━>    CHILD
+    CALL CHILD    ━━┛       DO SOMETHING
+    NOP                     RETURN        =========>  Corrupted Address
 ```
 
 However, if the `return address` is corrupted then when the child function attempts to return control flow to the parent function control flow is actually redirected to the address dictated by the corrupted `return address`.
@@ -87,22 +87,22 @@ However, if the `return address` is corrupted then when the child function attem
 The base of the `call stack` is managed by a register called `RBP`. Registers essentially act like variables and the `RBP` register is used to keep track of the base of the `call stack`. The top of the `call stack` is managed by a register called `RSP`. The diagram below illustrates this point a little more clearly.
 
 ```
-                    |======================================================| <-- RBP
-                    |======================================================| 
-                    |======================================================|
-                    |======================================================|
-                    |======================================================| <-- RSP
-                    |                                                      | <-- New plate
+            |====================| <-- RBP
+            |====================| 
+            |====================|
+            |====================|
+            |====================| <-- RSP
+            |                    | <-- New plate
 ```
 
 The important thing to know about the `call stack` layout is that the contents of the stack are what we can influence and directly above the `RBP` pointer is the `return address`. 
 
 ```
-                    |======================================================| < RBP+8 Return Address
-                    |======================================================| < RBP
-                    |======================================================| < RBP-8 Local Variable
-                    |======================================================| < RBP-16 Local Variable
-                    |======================================================| < RBP-24 Local Variable
+            |====================| < RBP+8 Return Address
+            |====================| < RBP
+            |====================| < RBP-8 Local Variable
+            |====================| < RBP-16 Local Variable
+            |====================| < RBP-24 Local Variable
 ```
 
 ## **Introducing The Challenge**

@@ -1,4 +1,4 @@
-# My Blog
+# My Blog 
 
 A minimal, dark-themed blog for GitHub Pages, powered by Jekyll. Write articles in
 Markdown — they appear on the home page automatically, newest first.

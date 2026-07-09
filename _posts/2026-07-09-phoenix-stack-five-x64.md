@@ -2,7 +2,7 @@
 layout: post
 title: "Adapting Phoenix/Stack-Five x86 -> x64"
 date: 2026-07-09
-tags: [exploitation]
+tags: [Exploitation]
 ---
 
 The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. However, the primary challenge in my opinion, **stack-five**, can be an even more educational experience if we adapt it to an x64 architecture.

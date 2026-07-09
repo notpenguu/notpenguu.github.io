@@ -14,8 +14,8 @@ The purpose of this article is to illustrate the important points of memory corr
 What will this article cover:
   - **What is "the stack"**
   - **Hijacking control flow**
-  - **Introducing The Challenge**
-  - **Buffer Overflow**
+  - **Introducing the challenge**
+  - **Buffer overflow**
   - **Finding an address with `GDB`**
   - **Using `pwntools` to write an exploit**
 
@@ -105,7 +105,7 @@ The important thing to know about the `call stack` layout is that the contents o
             |====================| < RBP-24 Local Variable
 ```
 
-## **Introducing The Challenge**
+## **Introducing the challenge**
 
 ```c
 /*
@@ -144,7 +144,7 @@ echo 0 | sudo tee /proc/sys/kernel/randomize_va_space # Change back to 2 after
 
 Our goal is to spawn a shell. If you haven't tried already, I'd suggest giving this challenge a try by yourself first.
 
-## **Buffer Overflow**
+## **Buffer overflow**
 
 The vulnerable function of the exercise is `gets()`. This function is inherently dangerous because it performs no bounds checking. It reads input from stdin until a newline or EOF is encountered. This means that we can create an input with an arbitrary length to clobber other values.
 

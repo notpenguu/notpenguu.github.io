@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "An introduction to format string vulnerabilities with Phoenix/Format Four"
-date: 2026-07-09
+date: 2026-07-25
 tags: [Exploitation, Format Strings]
 ---
 

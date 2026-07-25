@@ -1,11 +1,11 @@
 ---
 layout: post
-title: "Adapting Phoenix/Stack-Five x86 -> x64"
+title: "An introduction to ret2shellcode on the stack with Phoenix/Stack Five"
 date: 2026-07-09
-tags: [Exploitation]
+tags: [Exploitation, Stack]
 ---
 
-The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. However, the primary challenge in my opinion, **stack-five**, can be an even more educational experience if we adapt it to an x64 architecture.
+The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. However, the primary challenge in my opinion for the stack section, **stack-five**, can be an even more educational experience if we adapt it to an x64 architecture.
 
 ## **Introduction**
 
@@ -272,6 +272,21 @@ p.interactive()
 
 `0x90` is `NOP` so we'll create the `NOP Sled` by computing the offset minus the length of the shellcode and creating that many `NOP` instructions. After creating the `NOP Sled`, we'll append the shellcode to the `NOP Sled` so any return landing in the `NOP Sled` will slide into the shellcode. Finally, we'll append the `return address` variable at the end to overwrite the program's return address. The last three operations open a process in the same way that `GDB` would, sends the payload and hands the shell over. 
 
+## **Expected Output**
+
+```
+┌──(kali㉿kali)-[~]
+└─$ python3 stack-five-exploit.py
+[+] Starting local process '/home/kali/stack-five': pid 155130
+[*] Switching to interactive mode
+Welcome to Stack Five, brought to you by https://exploit.education
+$ whoami
+kali
+$  
+```
+
+Running the exploit will trigger the system to spawn a shell in place of the binary's normal functionality.
+
 ## Conclusion
 
 The exploit follows the following structure
@@ -282,4 +297,4 @@ The exploit follows the following structure
                     |_________________________________________________________| 
 ```
 
-We hijacked the return address so instead of returning to the caller function, the program executes our arbitrary code.
+We hijacked the return address so instead of returning to the caller function, the program executes our arbitrary code. Thank you for sticking around to the end of the article, I hope you learned something from it or that you found the content entertaining <3

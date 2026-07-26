@@ -18,7 +18,7 @@ What will this article cover:
  - **Introducing the challenge**
  - **What is the Global Offset Table**
  - **Finding the `exit()` address with `objdump`**
- - **Finding the address with `GDB`**
+ - **Finding an address with `GDB`**
  - **Finding the offsets with `Python`**
  - **Shifting via block size**
  - **Using `pwntools` to overwrite memory**
@@ -162,7 +162,7 @@ End of assembler dump.
 
 From the output of `GDB` we see that the congratulations function starts at the memory address `0x000000000040117d`
 
-## **Using `Python` to find the offset**
+## **Finding the offsets with `Python`**
 
 Using an inline `Python` script for a simple payload we can use to determine the offset that our input lands at
 
@@ -226,6 +226,8 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAA
 As seen by the output of the updated script we have confirmed that the input overflows into the 13th and 14th slot from the original 12th slot.
 
 ## **Shifting via block size**
+
+First, to understand the structure of our payload we'll need to understand the two format specifiers we'll be using to accomplish exploitation in this context. The full string is `%Ac%B$hhn` where A and B are arbitrary integers. We can split this format string into the two format specifiers that comprise it, `%Ac` and `%B$hhn` where B is an arbitrary integer. `%Nc` is the manner in which we pad N bytes and `%N$hhn` is the manner in which we write to the byte at the Nth location.
 
 In order to overwrite the memory we'll need to overwrite the three lowest bytes (all those 0's in `0x0000000000404018` and `0x000000000040117d` don't really matter, just `0x404018` and `0x40117d`). This means we'll need three blocks. Given that we'll likely need to pad by two digits that gives us the section `%NNc` where N is an integer and we need to write those digits so that gives us the section `%NN$hhn` where N is an integer. These two sections will be joined together into `%NNc%NN$hhn` to form a block which has a total length of 11 bytes. We need three of these blocks to overwrite the three bytes meaning we'll have a total length of 33 bytes. 
 
@@ -399,7 +401,7 @@ You may be wondering why I used `set exec-wrapper env -i`, this is because we mu
 
 We want to write a stack address which means that instead of writing three bytes like in the previous example we'll need to write six bytes instead which naturally makes our payload larger. Right now, we don't know the exact address but we know it will resemble `0x7fffffffNNNN` where N is a hexadecimal byte.
 
-Decomposing this unknown sequence of bytes in order to understand the grouping, in order to make this grouping make sense we'll assume that `NN` are two separate values less than `7f`. We'll place `NN` and `NN` as the first two bytes as we don't know these values for sure yet. The next byte in this framing will be `7f` and the final bytes will be `ff`, `ff`, and `ff`. An important thing to note about this construction is that `ff` appears three times which means there will be two blocks that don't increment the counter at all, based on information from the first example we can assume that these blocks without a counter increment will look like `%NN$hhn` where N is an integer. Therefore, we can determine the length of these format blocks with a decent amount of certainty to be seven bytes in length.
+We can decompose this unknown sequence of bytes into a grouping to better understand the structure. We'll assume that `NN` are two separate values less than `7f`. We'll place `NN` and `NN` as the first two bytes as we don't know these values for sure yet. The next byte in this framing will be `7f` and the final bytes will be `ff`, `ff`, and `ff`. An important thing to note about this construction is that `ff` appears three times which means there will be two blocks that don't increment the counter at all, based on information from the first example we can assume that these blocks without a counter increment will look like `%NN$hhn` where N is an integer. Therefore, we can determine the length of these format blocks with a decent amount of certainty to be seven bytes in length.
 
 ```
 [NN]~~~~~[NN]~~~~~[7f]~~~~~[ff]

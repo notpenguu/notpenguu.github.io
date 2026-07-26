@@ -64,7 +64,7 @@ In order to hijack control flow we'll need to understand two things: **A)** How 
 
 ### **How does the `call stack` direct control flow?**
 
-When a function is called, the operating system creates a stack frame containing the function arguments, local variables for the function to use and crucially an address in memory for the function to return to after completion called the `return address`. Normally, the `return address` specifies the memory address directly after the call to the child function from the parent function but by corrupting this value, the attacker can hijack control flow.
+When a function is called within an existing process, the binary creates a stack frame containing the function arguments, local variables for the function to use and crucially an address in memory for the function to return to after completion called the `return address`. Normally, the `return address` specifies the memory address directly after the call to the child function from the parent function but by corrupting this value, the attacker can hijack control flow.
 
 ```
     PARENT          ┏━━>    CHILD
@@ -84,7 +84,7 @@ However, if the `return address` is corrupted then when the child function attem
 
 ### **The anatomy of the `call stack`**
 
-The base of the `call stack` is managed by a register called `RBP`. Registers essentially act like variables and the `RBP` register is used to keep track of the base of the `call stack`. The top of the `call stack` is managed by a register called `RSP`. The diagram below illustrates this point a little more clearly.
+The base of the current `call stack` is managed by a register called `RBP`. Registers essentially act like variables and the `RBP` register is used to keep track of the base of the `call stack`. The top of the `call stack` is managed by a register called `RSP`. The diagram below illustrates this point a little more clearly.
 
 ```
             |====================| <-- RBP
@@ -201,7 +201,7 @@ That's essentially all we need in order to build an exploit for this level
 
 ## **Using pwntools to write an exploit**
 
-In order to avoid unneccesary we'll use the `pwntools` module to help us out. 
+In order to avoid wasted effort to explain unnecessary syntax we'll use the `pwntools` module to help us out. 
 
 ```python
 from pwn import *

@@ -5,7 +5,7 @@ date: 2026-07-09
 tags: [Exploitation, Stack]
 ---
 
-The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. However, the primary challenge in my opinion for the stack section, **stack-five**, can be an even more educational experience if we adapt it to an x64 architecture.
+The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. The primary challenge, `Stack Five` can teach us a lot about the stack. 
 
 ## **Introduction**
 
@@ -84,7 +84,7 @@ However, if the `return address` is corrupted then when the child function attem
 
 ### **The anatomy of the `call stack`**
 
-The base of the current `call stack` is managed by a register called `RBP`. Registers essentially act like variables and the `RBP` register is used to keep track of the base of the `call stack`. The top of the `call stack` is managed by a register called `RSP`. The diagram below illustrates this point a little more clearly.
+The base of the current `stack frame` is managed by a register called `RBP`. Registers essentially act like variables and the `RBP` register is used to keep track of the base of the `stack fram`. The top of the `stack frame` is managed by a register called `RSP`. The diagram below illustrates this point a little more clearly.
 
 ```
             |====================| <-- RBP
@@ -201,7 +201,7 @@ That's essentially all we need in order to build an exploit for this level
 
 ## **Using pwntools to write an exploit**
 
-In order to avoid wasted effort to explain unnecessary syntax we'll use the `pwntools` module to help us out. 
+In order to avoid the wasted effort of explaining unnecessary boilerplate we'll use the `pwntools` module to help us out. 
 
 ```python
 from pwn import *
@@ -287,7 +287,7 @@ $
 
 Running the exploit will trigger the system to spawn a shell in place of the binary's normal functionality.
 
-## Conclusion
+## **Conclusion**
 
 The exploit follows the following structure
 

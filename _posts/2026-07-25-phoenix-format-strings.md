@@ -5,7 +5,7 @@ date: 2026-07-25
 tags: [Exploitation, Format Strings]
 ---
 
-The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. In this article, we'll be using the **format-four** exercise to explore format string vulnerabilities. Again, I do these exercises in x64 architecture so they will vary from the standard x86 solutions.
+The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. In this article, we'll be using the `Format Four` exercise to explore format string vulnerabilities.
 
 ## **Introduction**
 
@@ -16,7 +16,7 @@ What will this article cover:
  - **How does this become dangerous**
  - **Differentiation between normal overflows**
  - **Introducing the challenge**
- - **What is the Global Offset Table**
+ - **What is the `Global Offset` Table**
  - **Finding the `exit()` address with `objdump`**
  - **Finding an address with `GDB`**
  - **Finding the offsets with `Python`**
@@ -43,9 +43,29 @@ An example of a format string being used in the C programming language that defi
 
 The `printf` function in C only requires one argument, the format argument. `printf(const char *format, ...)`. The other optional and variable number of arguments follow this first argument and contain the data to be printed. 
 
+| Specifier | What the specifier does | Why it's important |
+| --- | --- | --- |
+| `%d` | Prints the argument as a signed decimal integer | The basic case, example of what format strings are normally for |
+| `%p` | Prints the argument as a hexadecimal pointer | Used later to dump stack slots and find our offset |
+| `%c` | Prints a single character; the width form `%Nc` prints N characters | The width form is how we control the exact byte count |
+| `%n` | Writes the number of bytes printed so far into the address held by the argument | The write primitive. Often disabled in hardened libc builds (e.g. `_FORTIFY_SOURCE`) |
+| `%s` | Follows the argument as a pointer and prints the string it points to | Contrast with `%p`: `%p` shows the pointer, `%s` dereferences it |
+
 ## **How does this become dangerous**
 
 When an attacker controls the actual format string of a format string function, i.e. `printf(input, ...)`. It allows the attacker to arbitrarily insert format specifiers in unintended locations. The side effect of this capability is that the attacker can now both read and write arbitrary memory.
+
+For example, in `printf(input)`, the user controls the input variable meaning that in this context they control the format string. If the user were to specify `%p` as their input then since `printf()` expects a matching argument for the specifier, it instead reads whatever happens to be in the argument registers and stack slots.
+
+```
+┌──(kali㉿kali)-[~]
+└─$ ./format-four
+Welcome to Format Four, brought to you by https://exploit.education
+%p
+0x7fffffffcd70
+```
+
+`Format Four` has a format string vulnerability just like this and as shown when it receives the input `%p`, the binary spits out a stack address. 
 
 ## **Differentiation between normal overflows**
 
@@ -110,9 +130,9 @@ echo 0 | sudo tee /proc/sys/kernel/randomize_va_space # Change back to 2 after
 
 Our goal is to redirect the execution into the congratulations, I will show a solution that simply overwrites the memory address and an example of writing shellcode to a buffer and then redirecting execution flow into the shellcode.
 
-## **What is the Global Offset Table**
+## **What is the `Global Offset` Table**
 
-The global offset table, usually referred to as the GOT in short, is a section of an ELF binary that stores absolute memory addresses of external functions and data from libraries. The Global Offset Table itself is a target for exploitation as the Procedural Linkage Table redirects execution through it and when the attacker controls the addresses in the Global Offset Table, they therefore control execution flow via the Procedural Linkage Table. It's kind of like having control of the ball that the dog will chase. 
+The `Global Offset Table`, usually referred to as the GOT in short, is a section of an ELF binary that stores absolute memory addresses of external functions and data from libraries. The `Global Offset Table` itself is a target for exploitation as the Procedural Linkage Table redirects execution through it and when the attacker controls the addresses in the `Global Offset Table`, they therefore control execution flow via the Procedural Linkage Table. It's kind of like having control of the ball that the dog will chase. 
 
 ## **Finding the `exit()` address with `objdump`**
 
@@ -136,7 +156,7 @@ OFFSET           TYPE              VALUE
 
 The `-R` flag in `objdump` allows us to observe the dynamic relocation records for a binary, i.e. where the code goes in memory when it reaches some external function.
 
-From the output of the `objdump` command we can see that the `exit()` function resides at the memory location `0x0000000000404018`.
+From the output of the `objdump` command we can see that the slot for the `exit()` function in the `Global Offset Table` resides at the memory location `0x0000000000404018`.
 
 ## **Finding an address with `GDB`**
 
@@ -231,7 +251,11 @@ First, to understand the structure of our payload we'll need to understand the t
 
 In order to overwrite the memory we'll need to overwrite the three lowest bytes (all those 0's in `0x0000000000404018` and `0x000000000040117d` don't really matter, just `0x404018` and `0x40117d`). This means we'll need three blocks. Given that we'll likely need to pad by two digits that gives us the section `%NNc` where N is an integer and we need to write those digits so that gives us the section `%NN$hhn` where N is an integer. These two sections will be joined together into `%NNc%NN$hhn` to form a block which has a total length of 11 bytes. We need three of these blocks to overwrite the three bytes meaning we'll have a total length of 33 bytes. 
 
-These blocks must be 8-byte aligned so we'll need to pad them to reach a 40-byte long format block. This format block can be broken up into five quad-words which will be stored by the registers.
+These blocks must be 8-byte aligned so we'll need to pad them to reach a 40-byte long format block, or five quad-words. Two separate things determine which $ number reaches our pointers, and it's worth keeping them apart. 
+
+First, the absolute numbering: under the System V calling convention x64 uses, the first arguments aren't passed on the stack, they're passed in registers. The `printf()` format string is in the `RDI` register, and the next five arguments come from the `RSI`, `RDX`, `RCX`, `R8`, and `R9` registers; only the sixth argument onward is read from the stack. Those register slots are a fixed shift baked into every number and it's part of why our A's landed as argument 12 rather than something lower in the `%p` enumeration. 
+
+Second, and this is the part that changes with our payload: our pointers don't sit at the start of the buffer, they sit after the format block. The block here is five quad-words long, so the pointers begin five slots past where the buffer starts.
 
 ```
 [ format ]
@@ -242,7 +266,7 @@ These blocks must be 8-byte aligned so we'll need to pad them to reach a 40-byte
 [ stack  ]
 ```
 
-The effect that this has is that the slots are offset by five meaning that slot 12 is actually argument 17, slot 13 is actually argument 18, and slot 14 is actually argument 19.
+Putting it together: the buffer begins at slot 12, and our pointers sit five quad-words further in, so slot 12 maps to argument 17, slot 13 to argument 18, and slot 14 to argument 19. Watch the second number, not the first. When the format block grows, this is the offset that moves.
 
 ## **Using `pwntools` to overwrite memory**
 
@@ -354,7 +378,7 @@ The exploit leaves us in a constant loop of congratulations which is nice but a 
 
 ## **Adapting the script into ret2shellcode**
 
-In order to adapt this from redirecting execution flow to spawning a shell we'll need to do two things, place `shellcode` on the stack and redirect execution flow to the `shellcode` we placed instead of just redirecting the execution flow to an existing function.
+As a refresher for those who have read my introduction to ret2shellcode and a brief introduction for those who have not, `ret2shellcode` is an exploitation technique where we place `shellcode` or the raw CPU instructions to spawn a shell onto an executable stack and then overwrite the execution flow of the binary to redirect execution flow into those instructions.
 
 The first crucial step in adapting this exploit to work with `shellcode` is that we must find the buffer that we plan to place the `shellcode` in, in order to accurately redirect execution flow to the buffer address when we control it. 
 
@@ -449,6 +473,7 @@ AAAAAAAA
 ## **Using `pwntools` to write an exploit**
 
 The exploit looks a bit more complicated but it's really not that bad once we break things down into more manageable chunks
+
 ```python
 from pwn import *
 context.arch = 'amd64'
@@ -499,7 +524,7 @@ ARG0 = 20
 shell_addr = BUF + FMT_LEN + 48 + SLED // 2
 ```
 
-The first variable is the address of the buffer variable, the second variable is the address of the `exit()` function as defined by the Global Offset Table, the third variable is the length of the format string payload, the fourth variable is the length of the `NOP` sled we'll implement to enhance reliability of our exploit, the fifth variable is the starting argument. The final variable in this section is the "address of the `shellcode`", in reality we add the buffer address to the length of the format string and then add that number to 48, which is the length six quad word pointers take up (6 * 8 = 48), then finally we add half of the sled to our "address of the shellcode" so our "address to the shellcode" is actually in the middle of a `NOP` sled to improve reliability
+The first variable is the address of the buffer variable, the second variable is the address of the `exit()` function as defined by the `Global Offset Table`, the third variable is the length of the format string payload, the fourth variable is the length of the `NOP` sled we'll implement to enhance reliability of our exploit, the fifth variable is the starting argument. The final variable in this section is the "address of the `shellcode`", in reality we add the buffer address to the length of the format string and then add that number to 48, which is the length six quad word pointers take up (6 * 8 = 48), then finally we add half of the sled to our "address of the shellcode" so our "address to the shellcode" is actually in the middle of a `NOP` sled to improve reliability
 
 ### **The third section splits the target address into byte-writes**
 
@@ -588,12 +613,16 @@ buf += b"\x48\x31\xf6\x56\x48\xbf\x2f\x62\x69\x6e\x2f\x2f\x73\x68\x57\x54\x5f\x6
 The first line left justifies the format string payload by padding to the format length requirement we defined, the next line is simply adding a `NOP` sled to the payload. The line after that contains instructions in byte form to prepare the stack for the `shellcode` and the final line is the actual `shellcode`.
 
 #### **Part 1 - stack fixup**
+
+This section allows for space for the shellcode to actually run
  
 | Bytes | Instruction | Effect |
 |---|---|---|
 | `48 81 ec 00 01 00 00` | `sub rsp, 0x100` | Drop `rsp` 256 bytes below the shellcode so the upcoming pushes don't clobber unrun code (avoids SIGILL). |
  
 #### **Part 2 - execve("/bin//sh", NULL, NULL)**
+
+This section replaces the current process image with a new `/bin//sh` process image
  
 | Bytes | Instruction | Effect |
 |---|---|---|

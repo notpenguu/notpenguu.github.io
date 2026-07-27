@@ -15,7 +15,7 @@ What will this article cover:
   - **What is "the stack"**
   - **Hijacking control flow**
   - **Introducing the challenge**
-  - **Buffer overflow**
+  - **What is a buffer overflow**
   - **Finding an address with `GDB`**
   - **Using `pwntools` to write an exploit**
 
@@ -47,7 +47,7 @@ In order to understand memory corruption we'll need to understand the layout of 
     [  TEXT  ] <== Binary Image
 ```
 
-The key takeaway is that in this case the `stack` grows downwards in the `call stack` meaning that when reasoning about the `call stack` we must use a flipped model relative to a regular stack.
+The key takeaway is that the `call stack` grows downward, toward lower addresses, so when reasoning about it we must flip the plate model we started with.
 
 ```
 grows downwards |   |====================| 
@@ -60,7 +60,7 @@ grows downwards |   |====================|
 
 ## **Hijacking control flow**
 
-In order to hijack control flow we'll need to understand two things: **A)** How does the `call stack` direct control flow and **B)** The anatomy of the `call stack`
+In order to hijack control flow we'll need to understand two things: **A)** How does the `call stack` direct control flow and **B)** The anatomy of the `call stack`.
 
 ### **How does the `call stack` direct control flow?**
 
@@ -72,7 +72,7 @@ When a function is called within an existing process, the binary creates a stack
     NOP       <===========  RETURN
 ```
 
-A  function call looks something like this. The parent function calls the child function which does something and then follows the `return address` back to the parent function.
+A function call looks something like this. The parent function calls the child function which does something and then follows the `return address` back to the parent function.
 
 ```
     PARENT          ┏━━>    CHILD
@@ -80,11 +80,11 @@ A  function call looks something like this. The parent function calls the child 
     NOP                     RETURN        =========>  Corrupted Address
 ```
 
-However, if the `return address` is corrupted then when the child function attempts to return control flow to the parent function control flow is actually redirected to the address dictated by the corrupted `return address`.
+However, if the `return address` is corrupted, then when the child function attempts to return to the parent, control flow is instead redirected to the address held in the corrupted `return address`.
 
 ### **The anatomy of the `call stack`**
 
-The base of the current `stack frame` is managed by a register called `RBP`. Registers essentially act like variables and the `RBP` register is used to keep track of the base of the `stack fram`. The top of the `stack frame` is managed by a register called `RSP`. The diagram below illustrates this point a little more clearly.
+The base of the current `stack frame` is managed by a register called `RBP`. Registers essentially act like variables and the `RBP` register is used to keep track of the base of the `stack frame`. The top of the `stack frame` is managed by a register called `RSP`. The diagram below illustrates this point a little more clearly.
 
 ```
             |====================| <-- RBP
@@ -144,11 +144,18 @@ echo 0 | sudo tee /proc/sys/kernel/randomize_va_space # Change back to 2 after
 
 Our goal is to spawn a shell. If you haven't tried already, I'd suggest giving this challenge a try by yourself first.
 
-## **Buffer overflow**
+## **What is a buffer overflow**
 
 The vulnerable function of the exercise is `gets()`. This function is inherently dangerous because it performs no bounds checking. It reads input from stdin until a newline or EOF is encountered. This means that we can create an input with an arbitrary length to clobber other values.
 
-We'll use this vulnerability to insert instructions to spawn a shell into the buffer and corrupt the `return address` to point back to the shellcode.
+```
+[Buffer][Local Variables][RBP][Return Address]
+    |           |          |         |
+    V           V          V         V
+[AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]
+```
+
+An unbounded write to the buffer allows it to overflow and clobber the values above it. We'll use this vulnerability to insert instructions to spawn a shell into the buffer and corrupt the `return address` to point back to the shellcode.
 
 ## **Finding an address with `GDB`**
 
@@ -175,7 +182,7 @@ $1 = 0x7fffffffec60
 (gdb) 
 ```
 
-The `RDI` register is the first argument register under System V calling conventions. The first argument of the `gets()` holds an address to the buffer. By setting a breakpoint at the `gets()` function, we can look at the value held in the `RDI` register in order to determine the address of the buffer in memory so we can overwrite the `return address` with the correct value.
+The `RDI` register is the first argument register under System V calling conventions. The first argument of `gets()` holds an address to the buffer. By setting a breakpoint at the `gets()` function, we can look at the value held in the `RDI` register in order to determine the address of the buffer in memory so we can overwrite the `return address` with the correct value.
 
 We also need to find the offset for the buffer overflow.
 
@@ -197,9 +204,9 @@ End of assembler dump.
 
 The disassembly reveals that the buffer is loaded from 128 bytes below the `RBP` pointer and we know that the return address is 8 bytes above the `RBP` pointer. Therefore adding these together, `128 + 8 = 136`, gives us an offset of 136 bytes for our payload.
 
-That's essentially all we need in order to build an exploit for this level
+That's essentially all we need in order to build an exploit for this level.
 
-## **Using pwntools to write an exploit**
+## **Using `pwntools` to write an exploit**
 
 In order to avoid the wasted effort of explaining unnecessary boilerplate we'll use the `pwntools` module to help us out. 
 
@@ -239,6 +246,8 @@ ret = 0x7fffffffec60 + 56          # 0x7fffffffec98, mid-sled
 The first variable is the shellcode, split into two parts: moving the stack down so upcoming pushes land on the stack to prevent illegal instructions, and the actual instructions to spawn the shell.
 
 #### **Part 1 - stack fixup**
+
+This section allows for space for the shellcode to actually run.
  
 | Bytes | Instruction | Effect |
 |---|---|---|
@@ -246,6 +255,8 @@ The first variable is the shellcode, split into two parts: moving the stack down
  
 #### **Part 2 - execve("/bin//sh", NULL, NULL)**
  
+This section replaces the current process image with a new `/bin//sh` process image.
+
 | Bytes | Instruction | Effect |
 |---|---|---|
 | `48 31 f6` | `xor rsi, rsi` | `rsi = 0` => argv = NULL, also serves as the string terminator |
@@ -270,7 +281,7 @@ p.sendline(payload)
 p.interactive()
 ```
 
-`0x90` is `NOP` so we'll create the `NOP Sled` by computing the offset minus the length of the shellcode and creating that many `NOP` instructions. After creating the `NOP Sled`, we'll append the shellcode to the `NOP Sled` so any return landing in the `NOP Sled` will slide into the shellcode. Finally, we'll append the `return address` variable at the end to overwrite the program's return address. The last three operations open a process in the same way that `GDB` would, sends the payload and hands the shell over. 
+`0x90` is `NOP` so we'll create the `NOP Sled` by computing the offset minus the length of the shellcode and creating that many `NOP` instructions. After creating the `NOP Sled`, we'll append the shellcode to the `NOP Sled` so any return landing in the `NOP Sled` will slide into the shellcode. Finally, we'll append the `return address` variable at the end to overwrite the program's return address. The last three operations open a process in the same way that `GDB` would, send the payload and hand the shell over. 
 
 ## **Expected Output**
 
@@ -289,7 +300,7 @@ Running the exploit will trigger the system to spawn a shell in place of the bin
 
 ## **Conclusion**
 
-The exploit follows the following structure
+The ret2shellcode exploit we made has the following structure.
 
 ```
                     [NOP-Sled 106-bytes] -> [Shellcode 30 bytes] [Hijacked Ret]

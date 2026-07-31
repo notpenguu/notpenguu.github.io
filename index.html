@@ -6,7 +6,12 @@ layout: default
   <p>{{ site.description }}</p>
 </section>
 
-<ul class="post-list">
+<div class="search-wrap">
+  <input type="search" id="search-input" class="search-input" placeholder="Regex search posts…" autocomplete="off" spellcheck="false" aria-label="Search posts by regular expression">
+  <p id="search-status" class="search-status" hidden></p>
+</div>
+
+<ul class="post-list" id="post-list">
   {% for post in site.posts %}
   <li>
     <span class="post-list-date">{{ post.date | date: "%b %-d, %Y" }}</span>
@@ -15,3 +20,17 @@ layout: default
   </li>
   {% endfor %}
 </ul>
+
+<script type="application/json" id="posts-data">
+[
+{% for post in site.posts %}
+  {
+    "title": {{ post.title | jsonify }},
+    "url": {{ post.url | relative_url | jsonify }},
+    "date": {{ post.date | date: "%b %-d, %Y" | jsonify }},
+    "excerpt": {% if post.excerpt %}{{ post.excerpt | strip_html | jsonify }}{% else %}""{% endif %}
+  }{% unless forloop.last %},{% endunless %}
+{% endfor %}
+]
+</script>
+<script src="{{ '/assets/search.js' | relative_url }}" defer></script>

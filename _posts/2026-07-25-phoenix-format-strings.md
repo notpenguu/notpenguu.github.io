@@ -15,25 +15,25 @@ What will this article cover:
 
 ### **Generic memory corruption**
 
- - **What is a format string**
- - **How does this become dangerous**
- - **Differentiation between normal overflows**
- - **Introducing the challenge**
- - **What is the `Global Offset` Table**
- - **Finding the `exit()` address with `objdump`**
- - **Finding an address with `GDB`**
- - **Finding the offsets with `Python`**
- - **Shifting via block size**
- - **Using `pwntools` to overwrite memory**
+ - [**What is a format string**](#what-is-a-format-string)
+ - [**How does this become dangerous**](#how-does-this-become-dangerous)
+ - [**Differentiation between normal overflows**](#differentiation-between-normal-overflows)
+ - [**Introducing the challenge**](#introducing-the-challenge)
+ - [**What is the `Global Offset` Table**](#what-is-the-global-offset-table)
+ - [**Finding the `exit()` address with `objdump`**](#finding-the-exit-address-with-objdump)
+ - [**Finding an address with `GDB`**](#finding-an-address-with-gdb)
+ - [**Finding the offsets with `Python`**](#finding-the-offsets-with-python)
+ - [**Shifting via block size**](#shifting-via-block-size)
+ - [**Using `pwntools` to overwrite memory**](#using-pwntools-to-overwrite-memory)
 
 ### **ret2shellcode**
 
- - **Adapting the script into ret2shellcode**
- - **The requirements for ret2shellcode**
- - **What is the stack**
- - **Finding the address of the buffer with `GDB`**
- - **Approximating payload size**
- - **Using `pwntools` to write an exploit**
+ - [**Adapting the script into ret2shellcode**](#adapting-the-script-into-ret2shellcode)
+ - [**The requirements for ret2shellcode**](#the-requirements-for-ret2shellcode)
+ - [**What is the stack**](#what-is-the-stack)
+ - [**Finding the address of the buffer with `GDB`**](#finding-the-address-of-the-buffer-with-gdb)
+ - [**Approximating payload size**](#approximating-payload-size)
+ - [**Using `pwntools` to write an exploit**](#using-pwntools-to-write-an-exploit)
 
 ## **What is a format string**
 

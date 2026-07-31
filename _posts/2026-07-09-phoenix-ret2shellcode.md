@@ -12,13 +12,23 @@ The Phoenix series by [Exploit Education](https://exploit.education) is an excel
 The purpose of this article is to illustrate the important points of memory corruption exploitation on the stack. 
 
 What will this article cover:
-  - **What is "the stack"**
-  - **Hijacking control flow**
-  - **Introducing the challenge**
-  - **The requirements for ret2shellcode**
-  - **What is a buffer overflow**
-  - **Finding an address with `GDB`**
-  - **Using `pwntools` to write an exploit**
+- [**Introduction**](#introduction)
+- [**What is "the stack"**](#what-is-the-stack)
+- [**Hijacking control flow**](#hijacking-control-flow)
+  - [**How does the `call stack` direct control flow?**](#how-does-the-call-stack-direct-control-flow)
+  - [**The anatomy of the `call stack`**](#the-anatomy-of-the-call-stack)
+- [**Introducing the challenge**](#introducing-the-challenge)
+- [**The requirements for ret2shellcode**](#the-requirements-for-ret2shellcode)
+- [**What is a buffer overflow**](#what-is-a-buffer-overflow)
+- [**Finding an address with `GDB`**](#finding-an-address-with-gdb)
+- [**Using `pwntools` to write an exploit**](#using-pwntools-to-write-an-exploit)
+  - [**The first section just handles imports and setup**](#the-first-section-just-handles-imports-and-setup)
+  - [**The second section handles the definition of important variables for the exploit**](#the-second-section-handles-the-definition-of-important-variables-for-the-exploit)
+    - [**Part 1 - stack fixup**](#part-1---stack-fixup)
+    - [**Part 2 - execve("/bin//sh", NULL, NULL)**](#part-2---execvebinsh-null-null)
+  - [**The third section handles payload assembly and delivery**](#the-third-section-handles-payload-assembly-and-delivery)
+- [**Expected Output**](#expected-output)
+- [**Conclusion**](#conclusion)
 
 ## **What is "the stack"**
 

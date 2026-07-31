@@ -9,6 +9,8 @@ url: "notpenguu.github.io"
 
 # Build settings
 markdown: kramdown
+kramdown:
+  auto_ids: true
 permalink: /posts/:title/
 
 # Show newest posts first on the home page (handled in index.html)

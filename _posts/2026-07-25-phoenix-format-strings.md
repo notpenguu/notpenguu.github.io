@@ -9,7 +9,7 @@ The Phoenix series by [Exploit Education](https://exploit.education) is an excel
 
 ## **Introduction**
 
-This purpose of this article is to explore the exploitation of an introductory format string vulnerability, first through a generic memory-corruption approach and then through the ret2shellcode paradigm.
+The purpose of this article is to explore the exploitation of an introductory format string vulnerability, first through a generic memory-corruption approach and then through the ret2shellcode paradigm.
 
 What will this article cover:
 

@@ -2,3 +2,4 @@ _site/
 .jekyll-cache/
 .sass-cache/
 Gemfile.lock
+_posts/2026-07-30-SQL-injection.md

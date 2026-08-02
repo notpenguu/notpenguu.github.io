@@ -47,7 +47,7 @@
       re = new RegExp(query, 'i');
     } catch (e) {
       status.hidden = false;
-      status.textContent = 'Invalid regex: ' + e.message;
+      status.textContent = 'Invalid search: ' + e.message;
       return;
     }
 

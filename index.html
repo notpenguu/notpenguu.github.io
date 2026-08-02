@@ -7,7 +7,7 @@ layout: default
 </section>
 
 <div class="search-wrap">
-  <input type="search" id="search-input" class="search-input" placeholder="Regex search posts…" autocomplete="off" spellcheck="false" aria-label="Search posts by regular expression">
+  <input type="search" id="search-input" class="search-input" placeholder="search posts…" autocomplete="off" spellcheck="false" aria-label="Search posts by regular expression">
   <p id="search-status" class="search-status" hidden></p>
 </div>
 
@@ -16,7 +16,7 @@ layout: default
   <li>
     <span class="post-list-date">{{ post.date | date: "%b %-d, %Y" }}</span>
     <a class="post-list-link" href="{{ post.url | relative_url }}">{{ post.title }}</a>
-    {% if post.excerpt %}<p class="post-list-excerpt">{{ post.excerpt | strip_html | truncatewords: 25 }}</p>{% endif %}
+    {% if post.excerpt %}<p class="post-list-excerpt">{{ post.excerpt | strip_html | truncatewords: 20 }}</p>{% endif %}
   </li>
   {% endfor %}
 </ul>

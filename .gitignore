@@ -2,4 +2,5 @@ _site/
 .jekyll-cache/
 .sass-cache/
 Gemfile.lock
-_posts/2026-07-30-SQL-injection.md
+2026-08-04-in-band-sql-injection.md
+_posts/2026-08-25-phoenix-rop.md

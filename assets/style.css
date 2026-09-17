@@ -97,6 +97,7 @@ a:hover { text-decoration: underline; }
 .post-list-link { font-size: 1.2rem; font-weight: 600; color: var(--text); }
 .post-list-link:hover { color: var(--accent); }
 .post-list-excerpt { color: var(--text-dim); margin: 0.4rem 0 0; }
+.content img { max-width: 100%; height: auto; border-radius: 6px; }
 
 /* Post */
 .post-title { margin-bottom: 0.25rem; line-height: 1.2; }

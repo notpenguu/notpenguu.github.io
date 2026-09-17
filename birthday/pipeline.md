@@ -1,3 +1,8 @@
+---
+layout: default
+title: "From a picture to a moving line drawing: how diffy-art works"
+---
+
 # From a picture to a moving line drawing: how diffy-art works
 
 This document walks through every stage of the transformation pipeline using the pictures and numbers the program recorded while it ran. Every image below comes from one real run on one input image.

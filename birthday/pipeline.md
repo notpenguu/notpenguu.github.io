@@ -5,7 +5,7 @@ title: "Happy Birthday Tomoe"
 
 # Introduction
 
-This document walks through every stage of the transformation pipeline using the pictures and numbers the program recorded while it ran. Every image below comes from one real run on one input image.
+This document walks through every stage of the transformation pipeline using the pictures and numbers the program recorded while it ran. Every image below comes from one real run on one input image. Please note that the run in this article differs from the final GIF.
 
 ---
 

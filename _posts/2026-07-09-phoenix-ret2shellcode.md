@@ -5,7 +5,7 @@ date: 2026-07-09
 tags: [Memory Corruption, Stack]
 ---
 
-The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. The primary challenge, `Stack Five` can teach us a lot about direct return address overwrite attacks. 
+The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. The exercise, `Stack Five` can teach us a lot about direct return address overwrite attacks.
 
 ## **Introduction**
 
@@ -145,7 +145,7 @@ gcc -fno-stack-protector -z execstack -no-pie -o stack-five stack-five.c
 echo 0 | sudo tee /proc/sys/kernel/randomize_va_space # Change back to 2 after
 ```
 
-Our goal is to spawn a shell. If you haven't tried already, I'd suggest giving this challenge a try by yourself first.
+Our goal is to spawn a shell. If you haven't tried already, I'd suggest giving this challenge a try by yourself first. (Hint: The intended exploit paradigm is `ret2shellcode` which as the name suggests involves returning to shellcode)
 
 ## **The requirements for ret2shellcode**
 

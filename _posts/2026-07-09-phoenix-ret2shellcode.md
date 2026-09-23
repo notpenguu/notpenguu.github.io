@@ -22,7 +22,7 @@ What will this article cover:
 - [**Expected Output**](#expected-output)
 - [**Conclusion**](#conclusion)
 
-# Synopsis
+## Synopsis
 
 First, the corruption arena will be introduced, then we'll take a look at how control flow hijacking works in that arena, next we'll introduce the challenge, then we'll go over the binary requirements for the attack, next we'll introduce a write primitive for the challenge, then I'll show how to gather information for the exploit and finally write and explain the exploit.
 

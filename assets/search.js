@@ -14,21 +14,15 @@
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  function truncateExcerpt(text) {
-    var words = String(text).split(/\s+/).filter(Boolean);
-    if (words.length <= 25) return String(text);
-    return words.slice(0, 25).join(' ') + '…';
-  }
-
   function render(items) {
     list.innerHTML = items.map(function (p) {
-      var excerpt = p.excerpt
-        ? '<p class="post-list-excerpt">' + escapeHtml(truncateExcerpt(p.excerpt)) + '</p>'
+      var tags = (p.tags && p.tags.length)
+        ? '<p class="post-list-tags">' + escapeHtml(p.tags.join(' · ')) + '</p>'
         : '';
       return '<li>' +
         '<span class="post-list-date">' + escapeHtml(p.date) + '</span>' +
         '<a class="post-list-link" href="' + escapeHtml(p.url) + '">' + escapeHtml(p.title) + '</a>' +
-        excerpt +
+        tags +
         '</li>';
     }).join('');
   }
@@ -52,7 +46,7 @@
     }
 
     var matches = posts.filter(function (p) {
-      return re.test(p.title) || re.test(p.excerpt || '');
+      return re.test(p.title) || re.test((p.tags || []).join(' ')) || re.test(p.excerpt || '');
     });
 
     status.hidden = false;

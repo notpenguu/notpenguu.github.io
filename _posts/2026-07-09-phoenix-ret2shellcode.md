@@ -5,11 +5,11 @@ date: 2026-07-09
 tags: [Memory Corruption, Stack]
 ---
 
-The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. The exercise, `Stack Five` can teach us a lot about direct return address overwrite attacks.
+The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. The exercise, `Stack Five` can teach us a lot about direct return address overwrite attacks in the stack arena.
 
 ## **Introduction**
 
-The purpose of this article is to practically show how to perform the best-case scenario for memory corruption. Direct return address overwrite attacks on the stack are very uncommon now but they are nonetheless important to understand as it illustrates the very essence of memory corruption well.
+The purpose of this article is to practically show how to perform the best-case scenario for memory corruption. Direct return address overwrite attacks on the stack are very uncommon nowadays but they are nonetheless important to understand as it illustrates the very essence of memory corruption well.
 
 What will this article cover:
 - [**What is "the stack"**](#what-is-the-stack)
@@ -21,6 +21,10 @@ What will this article cover:
 - [**Using `pwntools` to write an exploit**](#using-pwntools-to-write-an-exploit)
 - [**Expected Output**](#expected-output)
 - [**Conclusion**](#conclusion)
+
+# Synopsis
+
+First, the corruption arena will be introduced, then we'll take a look at how control flow hijacking works in that arena, next we'll introduce the challenge, then we'll go over the binary requirements for the attack, next we'll introduce a write primitive for the challenge, then I'll show how to gather information for the exploit and finally write and explain the exploit.
 
 ## **What is "the stack"**
 

@@ -1,15 +1,15 @@
 ---
 layout: post
-title: "An introduction to ret2shellcode on the stack with Phoenix/Stack Five"
+title: "How to directly overwrite return addresses and why?"
 date: 2026-07-09
-tags: [Exploitation, Stack]
+tags: [Memory Corruption, Stack]
 ---
 
-The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. The primary challenge, `Stack Five` can teach us a lot about the stack. 
+The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. The primary challenge, `Stack Five` can teach us a lot about direct return address overwrite attacks. 
 
 ## **Introduction**
 
-The purpose of this article is to illustrate the important points of memory corruption exploitation on the stack. 
+The purpose of this article is to practically show how to perform the best-case scenario for memory corruption. Direct return address overwrite attacks on the stack are very uncommon now but they are nonetheless important to understand as it illustrates the very essence of memory corruption well.
 
 What will this article cover:
 - [**What is "the stack"**](#what-is-the-stack)
@@ -37,7 +37,7 @@ A `stack` is a linear structure for data. Like a physical stack of plates, the `
 
 On `remove()` operations the topmost plate will be removed, and on `add()` operations a plate will be pushed on top of the current topmost plate. In the context of a stack, these operations are usually called `pop` for removal and `push` for addition.
 
-For our purposes, we're interested in a specific stack called the `call stack`. The `call stack` is used by programs to track function calls and direct **control flow**. It essentially acts like a todo-list for the program and exploitation of the stack centers around redirecting that execution into arbitrary instructions.
+For our purposes, we're interested in a specific stack called the `call stack`. The `call stack` is used by programs to track function calls and direct **control flow**. It essentially acts like a todo-list for the program and exploitation of the stack centers around redirecting that execution of tasks into our own arbitrary instructions.
 
 In order to understand memory corruption we'll need to understand the layout of the memory in the process we plan to corrupt. 
 

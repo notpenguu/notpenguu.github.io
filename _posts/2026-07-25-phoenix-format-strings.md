@@ -1,8 +1,8 @@
 ---
 layout: post
-title: "An introduction to format string vulnerabilities with Phoenix/Format Four"
+title: "The role of format strings in memory corruption"
 date: 2026-07-25
-tags: [Exploitation, Format Strings]
+tags: [Memory Corruption, Format Strings]
 ---
 
 The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. In this article, we'll be using the `Format Four` exercise to explore format string vulnerabilities.

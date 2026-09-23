@@ -2,14 +2,14 @@
 layout: post
 title: "The role of format strings in memory corruption"
 date: 2026-07-25
-tags: [Memory Corruption, Format Strings]
+tags: [Memory Corruption, Arena Agnostic]
 ---
 
 The Phoenix series by [Exploit Education](https://exploit.education) is an excellent introduction to memory corruption. In this article, we'll be using the `Format Four` exercise to explore format string vulnerabilities.
 
 ## **Introduction**
 
-The purpose of this article is to explore the exploitation of an introductory format string vulnerability, first through a generic memory-corruption approach and then through the ret2shellcode paradigm.
+The purpose of this article is to explore the exploitation of an introductory format string vulnerability, first through a generic memory-corruption approach and then through the ret2shellcode paradigm. Format string vulnerabilities are extremely useful for constructing primitives.
 
 What will this article cover:
 
